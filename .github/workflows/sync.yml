@@ -1,0 +1,29 @@
+name: Sync fork
+on:
+  schedule:
+    - cron: '22 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync from upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+          UPSTREAM=$(gh api "repos/$REPO" --jq .parent.full_name)
+          BRANCH=$(gh api "repos/$REPO" --jq .default_branch)
+          git remote add upstream "https://github.com/$UPSTREAM.git"
+          git fetch upstream "$BRANCH"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git merge --no-edit "upstream/$BRANCH"
+          git push origin "HEAD:$BRANCH"
